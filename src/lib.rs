@@ -7,6 +7,7 @@
 //! Czas przychodzi z zewnatrz jako parametr, dzieki czemu testy sterują
 //! jego uplywem bez czekania.
 
+pub mod api;
 pub mod clock;
 pub mod device;
 pub mod link;

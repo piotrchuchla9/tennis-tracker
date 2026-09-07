@@ -40,6 +40,7 @@ pub enum Delivery {
 
 /// Surowy transport pakietow. Implementacje produkcyjne opieraja sie na
 /// MultipeerConnectivity albo BLE; testy podstawiaja atrape w pamieci.
+#[uniffi::export(with_foreign)]
 pub trait PeerTransport: Send + Sync {
     fn send(&self, data: Vec<u8>, delivery: Delivery) -> Result<(), TransportError>;
     fn is_connected(&self) -> bool;
