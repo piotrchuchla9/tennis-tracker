@@ -8,6 +8,7 @@
 //! jego uplywem bez czekania.
 
 pub mod clock;
+pub mod device;
 pub mod link;
 pub mod session;
 
