@@ -167,3 +167,140 @@ impl PeerTransport for FakeTransport {
         *self.connected.lock().unwrap()
     }
 }
+
+use tracker_core::session::{
+    CaptureControlling, CaptureError, CaptureProfile, LockedCameraSettings, SegmentInfo,
+    StorageProbing, ThermalLevel, ThermalProbing, WhiteBalanceGains,
+};
+
+pub struct FakeCapture {
+    state: Mutex<FakeCaptureState>,
+    pub lock_should_fail: Mutex<bool>,
+}
+
+struct FakeCaptureState {
+    did_lock: bool,
+    did_start: bool,
+    did_stop: bool,
+    roll_count: usize,
+    segment_index: usize,
+    segment_start: f64,
+}
+
+impl FakeCapture {
+    pub fn new() -> Self {
+        Self {
+            state: Mutex::new(FakeCaptureState {
+                did_lock: false,
+                did_start: false,
+                did_stop: false,
+                roll_count: 0,
+                segment_index: 0,
+                segment_start: 0.0,
+            }),
+            lock_should_fail: Mutex::new(false),
+        }
+    }
+
+    pub fn did_lock(&self) -> bool { self.state.lock().unwrap().did_lock }
+    pub fn did_start(&self) -> bool { self.state.lock().unwrap().did_start }
+    pub fn did_stop(&self) -> bool { self.state.lock().unwrap().did_stop }
+    pub fn roll_count(&self) -> usize { self.state.lock().unwrap().roll_count }
+    pub fn set_lock_should_fail(&self, fail: bool) { *self.lock_should_fail.lock().unwrap() = fail; }
+
+    fn close_segment(&self, state: &mut FakeCaptureState, now: f64) -> SegmentInfo {
+        let info = SegmentInfo {
+            file: format!("video-{:03}.mov", state.segment_index),
+            start_host_time: state.segment_start,
+            end_host_time: now,
+            frame_count: ((now - state.segment_start) * 120.0) as u64,
+        };
+        state.segment_index += 1;
+        state.segment_start = now;
+        info
+    }
+}
+
+impl Default for FakeCapture {
+    fn default() -> Self { Self::new() }
+}
+
+impl CaptureControlling for FakeCapture {
+    fn lock_settings(&self) -> Result<LockedCameraSettings, CaptureError> {
+        if *self.lock_should_fail.lock().unwrap() {
+            return Err(CaptureError::NoCamera);
+        }
+        self.state.lock().unwrap().did_lock = true;
+        Ok(LockedCameraSettings {
+            exposure_duration_seconds: 0.001,
+            iso: 64.0,
+            focus_lens_position: 0.82,
+            white_balance_gains: WhiteBalanceGains { r: 1.9, g: 1.0, b: 1.6 },
+        })
+    }
+
+    fn start_recording(&self, _session_id: &str, _profile: CaptureProfile) -> Result<(), CaptureError> {
+        let mut state = self.state.lock().unwrap();
+        state.did_start = true;
+        state.segment_start = 1000.05;
+        Ok(())
+    }
+
+    fn roll_segment(&self, now: f64) -> Result<SegmentInfo, CaptureError> {
+        let mut state = self.state.lock().unwrap();
+        state.roll_count += 1;
+        Ok(self.close_segment(&mut state, now))
+    }
+
+    fn stop_recording(&self, now: f64) -> Result<SegmentInfo, CaptureError> {
+        let mut state = self.state.lock().unwrap();
+        state.did_stop = true;
+        Ok(self.close_segment(&mut state, now))
+    }
+
+    fn first_frame_host_time(&self) -> Option<f64> { Some(1000.05) }
+
+    fn intrinsic_matrix(&self) -> Option<Vec<Vec<f64>>> {
+        Some(vec![
+            vec![1580.0, 0.0, 960.0],
+            vec![0.0, 1580.0, 540.0],
+            vec![0.0, 0.0, 1.0],
+        ])
+    }
+
+    fn lens_name(&self) -> String { "builtInWideAngleCamera".into() }
+}
+
+pub struct FakeStorage {
+    free: Mutex<i64>,
+}
+
+impl FakeStorage {
+    pub fn new() -> Self { Self { free: Mutex::new(64_000_000_000) } }
+    pub fn set_free_bytes(&self, bytes: i64) { *self.free.lock().unwrap() = bytes; }
+}
+
+impl Default for FakeStorage {
+    fn default() -> Self { Self::new() }
+}
+
+impl StorageProbing for FakeStorage {
+    fn free_bytes(&self) -> i64 { *self.free.lock().unwrap() }
+}
+
+pub struct FakeThermal {
+    level: Mutex<ThermalLevel>,
+}
+
+impl FakeThermal {
+    pub fn new() -> Self { Self { level: Mutex::new(ThermalLevel::Nominal) } }
+    pub fn set_level(&self, level: ThermalLevel) { *self.level.lock().unwrap() = level; }
+}
+
+impl Default for FakeThermal {
+    fn default() -> Self { Self::new() }
+}
+
+impl ThermalProbing for FakeThermal {
+    fn thermal_level(&self) -> ThermalLevel { *self.level.lock().unwrap() }
+}
