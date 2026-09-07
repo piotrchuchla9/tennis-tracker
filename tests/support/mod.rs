@@ -91,3 +91,79 @@ pub fn make_series(spec: &SeriesSpec) -> Vec<ClockSample> {
         })
         .collect()
 }
+
+use std::sync::Mutex;
+use tracker_core::link::{decode, Delivery, LinkEnvelope, LinkMessage, PeerTransport, TransportError};
+
+/// Transport w pamieci. Pozwala testom podac dowolna sekwencje pakietow,
+/// wlacznie z duplikatami i kolejnoscia odwrocona.
+pub struct FakeTransport {
+    sent: Mutex<Vec<(Vec<u8>, Delivery)>>,
+    connected: Mutex<bool>,
+    fail_send: Mutex<bool>,
+}
+
+impl FakeTransport {
+    pub fn new() -> Self {
+        Self {
+            sent: Mutex::new(Vec::new()),
+            connected: Mutex::new(true),
+            fail_send: Mutex::new(false),
+        }
+    }
+
+    pub fn sent_envelopes(&self) -> Vec<LinkEnvelope> {
+        self.sent
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(bytes, _)| decode(bytes).expect("wyslany pakiet musi byc poprawny"))
+            .collect()
+    }
+
+    /// Tryby dostarczenia w kolejnosci wysylki — do sprawdzenia,
+    /// ze pingi nie ida po niezawodnym kanale.
+    pub fn sent_deliveries(&self) -> Vec<Delivery> {
+        self.sent.lock().unwrap().iter().map(|(_, d)| *d).collect()
+    }
+
+    pub fn sent_messages(&self) -> Vec<LinkMessage> {
+        self.sent_envelopes().into_iter().map(|e| e.message).collect()
+    }
+
+    pub fn sent_count(&self) -> usize {
+        self.sent.lock().unwrap().len()
+    }
+
+    pub fn clear_sent(&self) {
+        self.sent.lock().unwrap().clear();
+    }
+
+    pub fn set_connected(&self, connected: bool) {
+        *self.connected.lock().unwrap() = connected;
+    }
+
+    pub fn set_fail_send(&self, fail: bool) {
+        *self.fail_send.lock().unwrap() = fail;
+    }
+}
+
+impl Default for FakeTransport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PeerTransport for FakeTransport {
+    fn send(&self, data: Vec<u8>, delivery: Delivery) -> Result<(), TransportError> {
+        if *self.fail_send.lock().unwrap() {
+            return Err(TransportError::SendFailed { reason: "atrapa".into() });
+        }
+        self.sent.lock().unwrap().push((data, delivery));
+        Ok(())
+    }
+
+    fn is_connected(&self) -> bool {
+        *self.connected.lock().unwrap()
+    }
+}
