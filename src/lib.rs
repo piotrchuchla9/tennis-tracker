@@ -10,6 +10,7 @@
 pub mod clock;
 pub mod device;
 pub mod link;
+pub mod remote;
 pub mod session;
 
 uniffi::setup_scaffolding!();
