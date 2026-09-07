@@ -1,5 +1,12 @@
 # P0 — Rig danych: plan implementacji
 
+> **STATUS: ZASTĄPIONY — NIE WYKONYWAĆ.**
+> Plan zakładał rdzeń `RigCore` w Swifcie i wyłącznie iOS. Zakres rozszerzono
+> o Androida, więc rdzeń jest teraz crate'em Rust spinanym przez UniFFI.
+> Obowiązujący spec: `docs/superpowers/specs/2026-09-07-tennis-tracker-p0a-rdzen-ios-design.md`.
+> Dokument zachowany dla historii — treść testów i rozstrzygnięcia algorytmiczne
+> przeniesiono do nowego planu.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Aplikacja iOS na dwa iPhone'y, która nagrywa zsynchronizowane wideo z audio ze sztywno zablokowanymi parametrami kamery i zapisuje komplet metadanych pozwalających w P1 odtworzyć wspólną oś czasu i geometrię.

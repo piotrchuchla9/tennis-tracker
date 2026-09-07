@@ -1,7 +1,14 @@
 # Tennis Tracker — P0: Rig danych (design)
 
 Data: 2026-09-02
-Status: zatwierdzony do planowania implementacji
+Status: **ZASTĄPIONY** przez `2026-09-07-tennis-tracker-p0a-rdzen-ios-design.md`
+
+> Dokument zachowany dla historii decyzji. Zakres rozszerzono o Androida i mieszaną
+> parę urządzeń, przez co rdzeń przeniósł się ze Swifta do Rusta (UniFFI), transport
+> przestał opierać się wyłącznie na MultipeerConnectivity, a P0 rozpadł się na
+> P0a (rdzeń + iOS) i P0b (Android). Doszedł też zegarek jako pilot i wyświetlacz
+> stanu. Rozstrzygnięcia o synchronizacji, parametrach nagrywania i obsłudze awarii
+> przeniesiono bez zmian.
 
 ## 1. Kontekst
 
