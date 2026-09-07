@@ -8,5 +8,7 @@
 //! jego uplywem bez czekania.
 
 pub mod clock;
+pub mod link;
+pub mod session;
 
 uniffi::setup_scaffolding!();

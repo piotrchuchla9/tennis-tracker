@@ -11,6 +11,7 @@ crate-type = ["lib", "staticlib", "cdylib"]
 uniffi = { version = "0.28", features = ["cli"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+thiserror = "1"
 
 [build-dependencies]
 uniffi = { version = "0.28", features = ["build"] }
