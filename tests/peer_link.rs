@@ -15,7 +15,11 @@ fn heartbeat(host_time: f64) -> LinkMessage {
 }
 
 fn packet(sequence: u64, host_time: f64) -> Vec<u8> {
-    encode(&LinkEnvelope { sequence, message: heartbeat(host_time) }).unwrap()
+    encode(&LinkEnvelope {
+        sequence,
+        message: heartbeat(host_time),
+    })
+    .unwrap()
 }
 
 #[test]
@@ -25,7 +29,11 @@ fn assigns_increasing_sequence_numbers() {
     link.send(heartbeat(2.0)).unwrap();
     link.send(heartbeat(3.0)).unwrap();
 
-    let sequences: Vec<u64> = transport.sent_envelopes().iter().map(|e| e.sequence).collect();
+    let sequences: Vec<u64> = transport
+        .sent_envelopes()
+        .iter()
+        .map(|e| e.sequence)
+        .collect();
     assert_eq!(sequences, vec![0, 1, 2]);
 }
 
@@ -87,13 +95,25 @@ fn connection_state_is_tracked() {
 fn pings_go_unreliable_and_commands_go_reliable() {
     let (transport, link) = setup();
     link.send(LinkMessage::Ping { id: 1, t1: 10.0 }).unwrap();
-    link.send(LinkMessage::Pong { id: 1, t1: 10.0, t2: 10.1, t3: 10.2 }).unwrap();
+    link.send(LinkMessage::Pong {
+        id: 1,
+        t1: 10.0,
+        t2: 10.1,
+        t3: 10.2,
+    })
+    .unwrap();
     link.send(heartbeat(11.0)).unwrap();
-    link.send(LinkMessage::StopRecording { host_time: 12.0 }).unwrap();
+    link.send(LinkMessage::StopRecording { host_time: 12.0 })
+        .unwrap();
 
     assert_eq!(
         transport.sent_deliveries(),
-        vec![Delivery::Unreliable, Delivery::Unreliable, Delivery::Reliable, Delivery::Reliable]
+        vec![
+            Delivery::Unreliable,
+            Delivery::Unreliable,
+            Delivery::Reliable,
+            Delivery::Reliable
+        ]
     );
 }
 

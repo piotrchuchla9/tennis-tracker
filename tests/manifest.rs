@@ -38,12 +38,20 @@ fn sample_manifest() -> SessionManifest {
             CaptureProfile::P1080p120,
             "hevc".into(),
             40,
-            AudioInfo { sample_rate_hz: 48000, channels: 1, codec: "pcm".into() },
+            AudioInfo {
+                sample_rate_hz: 48000,
+                channels: 1,
+                codec: "pcm".into(),
+            },
             LockedCameraSettings {
                 exposure_duration_seconds: 0.001,
                 iso: 64.0,
                 focus_lens_position: 0.82,
-                white_balance_gains: WhiteBalanceGains { r: 1.9, g: 1.0, b: 1.6 },
+                white_balance_gains: WhiteBalanceGains {
+                    r: 1.9,
+                    g: 1.0,
+                    b: 1.6,
+                },
             },
             Some(vec![
                 vec![1580.0, 0.0, 960.0],
@@ -95,17 +103,34 @@ fn player_genitive_survives_round_trip() {
     m.match_setup.players[0].genitive = Some("Piotra".into());
 
     let decoded = SessionManifest::decode(&m.encode().unwrap()).unwrap();
-    assert_eq!(decoded.match_setup.players[0].genitive.as_deref(), Some("Piotra"));
+    assert_eq!(
+        decoded.match_setup.players[0].genitive.as_deref(),
+        Some("Piotra")
+    );
 }
 
 #[test]
 fn encoded_json_uses_spec_keys() {
     let json = sample_manifest().encode().unwrap();
     for key in [
-        "schemaVersion", "sessionId", "platform", "peerDeviceModel", "match",
-        "capabilities", "timestampSource", "intrinsicMatrix", "firstFrameHostTime",
-        "transport", "syncModel", "referenceHostTime", "skewPpm", "residualStdMs",
-        "syncGaps", "targetBitrateMbps", "motionLog", "firstServer",
+        "schemaVersion",
+        "sessionId",
+        "platform",
+        "peerDeviceModel",
+        "match",
+        "capabilities",
+        "timestampSource",
+        "intrinsicMatrix",
+        "firstFrameHostTime",
+        "transport",
+        "syncModel",
+        "referenceHostTime",
+        "skewPpm",
+        "residualStdMs",
+        "syncGaps",
+        "targetBitrateMbps",
+        "motionLog",
+        "firstServer",
     ] {
         assert!(json.contains(&format!("\"{key}\"")), "brak klucza {key}");
     }
@@ -151,8 +176,18 @@ fn validate_rejects_empty_segments() {
 fn validate_rejects_non_contiguous_segments() {
     let mut m = sample_manifest();
     m.segments = vec![
-        SegmentInfo { file: "video-000.mov".into(), start_host_time: 100.0, end_host_time: 400.0, frame_count: 36000 },
-        SegmentInfo { file: "video-001.mov".into(), start_host_time: 420.0, end_host_time: 720.0, frame_count: 36000 },
+        SegmentInfo {
+            file: "video-000.mov".into(),
+            start_host_time: 100.0,
+            end_host_time: 400.0,
+            frame_count: 36000,
+        },
+        SegmentInfo {
+            file: "video-001.mov".into(),
+            start_host_time: 420.0,
+            end_host_time: 720.0,
+            frame_count: 36000,
+        },
     ];
     m.timing.first_frame_host_time = 100.0;
     assert!(m.validate().is_err());
@@ -162,9 +197,19 @@ fn validate_rejects_non_contiguous_segments() {
 fn validate_accepts_segments_within_one_frame() {
     let mut m = sample_manifest();
     m.segments = vec![
-        SegmentInfo { file: "video-000.mov".into(), start_host_time: 100.0, end_host_time: 400.0, frame_count: 36000 },
+        SegmentInfo {
+            file: "video-000.mov".into(),
+            start_host_time: 100.0,
+            end_host_time: 400.0,
+            frame_count: 36000,
+        },
         // 4 ms przerwy przy 120 fps to mniej niz jedna klatka (8,3 ms)
-        SegmentInfo { file: "video-001.mov".into(), start_host_time: 400.004, end_host_time: 700.0, frame_count: 36000 },
+        SegmentInfo {
+            file: "video-001.mov".into(),
+            start_host_time: 400.004,
+            end_host_time: 700.0,
+            frame_count: 36000,
+        },
     ];
     m.timing.first_frame_host_time = 100.0;
     assert!(m.validate().is_ok());
@@ -188,7 +233,10 @@ fn validate_rejects_malformed_intrinsics() {
 fn validate_accepts_absent_intrinsics() {
     let mut m = sample_manifest();
     m.camera.intrinsic_matrix = None;
-    assert!(m.validate().is_ok(), "Android zwykle nie udostepnia intrinsics");
+    assert!(
+        m.validate().is_ok(),
+        "Android zwykle nie udostepnia intrinsics"
+    );
 }
 
 #[test]

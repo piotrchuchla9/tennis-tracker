@@ -30,7 +30,11 @@ fn round_trip_is_exact() {
     let mut local = 900.0;
     while local <= 5000.0 {
         let peer = model.peer_time(local);
-        assert!((model.local_time(peer) - local).abs() < 1e-6, "local = {}", local);
+        assert!(
+            (model.local_time(peer) - local).abs() < 1e-6,
+            "local = {}",
+            local
+        );
         local += 137.0;
     }
 }

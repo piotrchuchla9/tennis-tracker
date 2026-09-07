@@ -110,7 +110,10 @@ pub fn estimate_timestamp_base_offset(pairs: &[(f64, f64)]) -> Option<(f64, f64)
         return None;
     }
 
-    let deltas: Vec<f64> = pairs.iter().map(|(frame, delivered)| delivered - frame).collect();
+    let deltas: Vec<f64> = pairs
+        .iter()
+        .map(|(frame, delivered)| delivered - frame)
+        .collect();
     let minimum = deltas.iter().cloned().fold(f64::INFINITY, f64::min);
 
     let n = deltas.len() as f64;

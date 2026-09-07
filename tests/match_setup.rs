@@ -93,7 +93,10 @@ fn both_players_always_face_each_other() {
     for games in 0..12u32 {
         let a = s.end_of("p1", games).unwrap();
         let b = s.end_of("p2", games).unwrap();
-        assert_ne!(a, b, "po {games} gemach gracze staneli po tej samej stronie");
+        assert_ne!(
+            a, b,
+            "po {games} gemach gracze staneli po tej samej stronie"
+        );
     }
 }
 
@@ -102,7 +105,10 @@ fn both_players_always_face_each_other() {
 #[test]
 fn genitive_is_optional_and_does_not_affect_validation() {
     let mut s = setup();
-    assert_eq!(s.player("p1").and_then(|p| p.genitive.as_deref()), Some("Piotra"));
+    assert_eq!(
+        s.player("p1").and_then(|p| p.genitive.as_deref()),
+        Some("Piotra")
+    );
 
     s.players[0].genitive = None;
     assert!(s.validate().is_ok());
@@ -116,5 +122,8 @@ fn court_end_has_an_opposite() {
 
 #[test]
 fn format_string_matches_manifest_vocabulary() {
-    assert_eq!(MatchFormat::SinglesAdTiebreak.as_str(), "singles-ad-tiebreak");
+    assert_eq!(
+        MatchFormat::SinglesAdTiebreak.as_str(),
+        "singles-ad-tiebreak"
+    );
 }

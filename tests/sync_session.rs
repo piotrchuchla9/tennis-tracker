@@ -48,7 +48,11 @@ fn produces_fit_after_burst_is_answered() {
     reply_to_pings(&transport, &mut session, 0.4);
 
     let fit = session.current_fit().expect("model powinien powstac");
-    assert!((fit.offset_seconds - 0.4).abs() < 0.001, "offset = {}", fit.offset_seconds);
+    assert!(
+        (fit.offset_seconds - 0.4).abs() < 0.001,
+        "offset = {}",
+        fit.offset_seconds
+    );
 }
 
 #[test]
@@ -71,7 +75,15 @@ fn steady_state_sends_one_ping_per_second() {
 fn unmatched_pong_is_ignored() {
     let (_transport, _link, mut session) = setup();
     session.start(1000.0);
-    session.handle(&LinkMessage::Pong { id: 99_999, t1: 1.0, t2: 2.0, t3: 3.0 }, 4.0);
+    session.handle(
+        &LinkMessage::Pong {
+            id: 99_999,
+            t1: 1.0,
+            t2: 2.0,
+            t3: 3.0,
+        },
+        4.0,
+    );
     assert_eq!(session.samples().len(), 0);
 }
 
@@ -80,7 +92,10 @@ fn ping_is_answered_with_pong() {
     let (transport, _link, mut session) = setup();
     session.handle(&LinkMessage::Ping { id: 5, t1: 700.0 }, 700.31);
 
-    let last = transport.sent_messages().pop().expect("oczekiwano odpowiedzi");
+    let last = transport
+        .sent_messages()
+        .pop()
+        .expect("oczekiwano odpowiedzi");
     match last {
         LinkMessage::Pong { id, t1, t2, t3 } => {
             assert_eq!(id, 5);

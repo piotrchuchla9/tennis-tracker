@@ -63,13 +63,20 @@ fn harness(role: SessionRole) -> Harness {
         RecorderConfig::default(),
     );
 
-    Harness { capture, storage, thermal, recorder }
+    Harness {
+        capture,
+        storage,
+        thermal,
+        recorder,
+    }
 }
 
 fn started(role: SessionRole, now: f64) -> Harness {
     let mut h = harness(role);
     h.recorder.arm().unwrap();
-    h.recorder.start("s-1", CaptureProfile::P1080p120, now).unwrap();
+    h.recorder
+        .start("s-1", CaptureProfile::P1080p120, now)
+        .unwrap();
     h
 }
 
@@ -77,7 +84,10 @@ fn started(role: SessionRole, now: f64) -> Harness {
 
 #[test]
 fn starts_idle() {
-    assert_eq!(harness(SessionRole::Master).recorder.state(), RecorderState::Idle);
+    assert_eq!(
+        harness(SessionRole::Master).recorder.state(),
+        RecorderState::Idle
+    );
 }
 
 #[test]
@@ -91,7 +101,10 @@ fn arm_locks_camera_settings() {
 #[test]
 fn start_requires_armed_state() {
     let mut h = harness(SessionRole::Master);
-    assert!(h.recorder.start("s-1", CaptureProfile::P1080p120, 1000.0).is_err());
+    assert!(h
+        .recorder
+        .start("s-1", CaptureProfile::P1080p120, 1000.0)
+        .is_err());
 }
 
 #[test]
@@ -131,20 +144,28 @@ fn segment_rolls_after_configured_duration() {
 fn critical_thermal_stops_session() {
     let mut h = started(SessionRole::Master, 1000.0);
 
-    h.thermal.set_level(tracker_core::session::ThermalLevel::Serious);
+    h.thermal
+        .set_level(tracker_core::session::ThermalLevel::Serious);
     h.recorder.tick(1010.0);
     assert_eq!(h.recorder.state(), RecorderState::Recording);
 
-    h.thermal.set_level(tracker_core::session::ThermalLevel::Critical);
+    h.thermal
+        .set_level(tracker_core::session::ThermalLevel::Critical);
     h.recorder.tick(1020.0);
-    assert_eq!(h.recorder.state(), RecorderState::Stopped { reason: StopReason::ThermalCritical });
+    assert_eq!(
+        h.recorder.state(),
+        RecorderState::Stopped {
+            reason: StopReason::ThermalCritical
+        }
+    );
     assert!(h.capture.did_stop());
 }
 
 #[test]
 fn serious_thermal_is_recorded_as_event() {
     let mut h = started(SessionRole::Master, 1000.0);
-    h.thermal.set_level(tracker_core::session::ThermalLevel::Serious);
+    h.thermal
+        .set_level(tracker_core::session::ThermalLevel::Serious);
     h.recorder.tick(1010.0);
 
     let manifest = h.recorder.build_manifest(1010.0, &snapshot()).unwrap();
@@ -160,7 +181,12 @@ fn low_storage_stops_session() {
     h.storage.set_free_bytes(100_000_000);
     h.recorder.tick(1010.0);
 
-    assert_eq!(h.recorder.state(), RecorderState::Stopped { reason: StopReason::StorageExhausted });
+    assert_eq!(
+        h.recorder.state(),
+        RecorderState::Stopped {
+            reason: StopReason::StorageExhausted
+        }
+    );
 }
 
 #[test]
@@ -179,7 +205,12 @@ fn slave_stops_after_peer_silence_timeout() {
     assert_eq!(h.recorder.state(), RecorderState::Recording);
 
     h.recorder.tick(1180.0);
-    assert_eq!(h.recorder.state(), RecorderState::Stopped { reason: StopReason::PeerSilence });
+    assert_eq!(
+        h.recorder.state(),
+        RecorderState::Stopped {
+            reason: StopReason::PeerSilence
+        }
+    );
 }
 
 #[test]
@@ -206,7 +237,11 @@ fn stop_produces_valid_manifest() {
     h.recorder.tick(1300.1);
     let manifest = h.recorder.stop(1450.0, &snapshot()).unwrap();
 
-    assert!(manifest.validate().is_ok(), "manifest niepoprawny: {:?}", manifest.validate());
+    assert!(
+        manifest.validate().is_ok(),
+        "manifest niepoprawny: {:?}",
+        manifest.validate()
+    );
     assert_eq!(manifest.session_id, "s-1");
     assert_eq!(manifest.role, SessionRole::Master);
     assert_eq!(manifest.platform, Platform::Ios);
@@ -238,7 +273,8 @@ fn manifest_carries_sync_model_and_gaps() {
 #[test]
 fn stop_is_idempotent_after_automatic_stop() {
     let mut h = started(SessionRole::Master, 1000.0);
-    h.thermal.set_level(tracker_core::session::ThermalLevel::Critical);
+    h.thermal
+        .set_level(tracker_core::session::ThermalLevel::Critical);
     h.recorder.tick(1010.0);
 
     let manifest = h.recorder.stop(1020.0, &snapshot()).unwrap();
@@ -249,8 +285,10 @@ fn stop_is_idempotent_after_automatic_stop() {
 #[test]
 fn marks_from_the_watch_reach_the_manifest() {
     let mut h = started(SessionRole::Master, 1000.0);
-    h.recorder.note_event(SessionEvent::mark(1100.0, "interesting"));
-    h.recorder.note_event(SessionEvent::mark(1200.0, "changeover"));
+    h.recorder
+        .note_event(SessionEvent::mark(1100.0, "interesting"));
+    h.recorder
+        .note_event(SessionEvent::mark(1200.0, "changeover"));
 
     let manifest = h.recorder.stop(1300.0, &snapshot()).unwrap();
     let tags: Vec<&str> = manifest

@@ -176,15 +176,24 @@ impl SessionEvent {
     }
 
     pub fn motion_spike(host_time: f64, magnitude: f64) -> Self {
-        Self { magnitude: Some(magnitude), ..Self::bare(host_time, "motion-spike") }
+        Self {
+            magnitude: Some(magnitude),
+            ..Self::bare(host_time, "motion-spike")
+        }
     }
 
     pub fn thermal(host_time: f64, state: &str) -> Self {
-        Self { state: Some(state.into()), ..Self::bare(host_time, "thermal") }
+        Self {
+            state: Some(state.into()),
+            ..Self::bare(host_time, "thermal")
+        }
     }
 
     pub fn capture_interrupted(host_time: f64, reason: &str) -> Self {
-        Self { reason: Some(reason.into()), ..Self::bare(host_time, "capture-interrupted") }
+        Self {
+            reason: Some(reason.into()),
+            ..Self::bare(host_time, "capture-interrupted")
+        }
     }
 
     pub fn capture_resumed(host_time: f64) -> Self {
@@ -192,11 +201,17 @@ impl SessionEvent {
     }
 
     pub fn mark(host_time: f64, tag: &str) -> Self {
-        Self { tag: Some(tag.into()), ..Self::bare(host_time, "mark") }
+        Self {
+            tag: Some(tag.into()),
+            ..Self::bare(host_time, "mark")
+        }
     }
 
     pub fn session_stopped(host_time: f64, reason: &str) -> Self {
-        Self { reason: Some(reason.into()), ..Self::bare(host_time, "session-stopped") }
+        Self {
+            reason: Some(reason.into()),
+            ..Self::bare(host_time, "session-stopped")
+        }
     }
 
     pub fn link_lost(host_time: f64) -> Self {
@@ -250,19 +265,23 @@ pub struct SessionManifest {
 
 impl SessionManifest {
     pub fn encode(&self) -> Result<String, ManifestError> {
-        serde_json::to_string_pretty(self)
-            .map_err(|error| ManifestError::Serialization { reason: error.to_string() })
+        serde_json::to_string_pretty(self).map_err(|error| ManifestError::Serialization {
+            reason: error.to_string(),
+        })
     }
 
     pub fn decode(json: &str) -> Result<Self, ManifestError> {
-        serde_json::from_str(json)
-            .map_err(|error| ManifestError::Serialization { reason: error.to_string() })
+        serde_json::from_str(json).map_err(|error| ManifestError::Serialization {
+            reason: error.to_string(),
+        })
     }
 
     /// Dopuszczalna przerwa miedzy segmentami: jedna klatka.
     pub fn validate(&self) -> Result<(), ManifestError> {
         if self.schema_version != 2 {
-            return Err(ManifestError::UnsupportedSchemaVersion { version: self.schema_version });
+            return Err(ManifestError::UnsupportedSchemaVersion {
+                version: self.schema_version,
+            });
         }
         let first = self.segments.first().ok_or(ManifestError::NoSegments)?;
 
@@ -271,7 +290,9 @@ impl SessionManifest {
             let previous = &self.segments[index - 1];
             let current = &self.segments[index];
             if current.start_host_time - previous.end_host_time > tolerance {
-                return Err(ManifestError::SegmentsNotContiguous { index: index as u32 });
+                return Err(ManifestError::SegmentsNotContiguous {
+                    index: index as u32,
+                });
             }
         }
 
@@ -296,7 +317,9 @@ impl SessionManifest {
 
         self.match_setup
             .validate()
-            .map_err(|error| ManifestError::InvalidMatchSetup { reason: error.to_string() })?;
+            .map_err(|error| ManifestError::InvalidMatchSetup {
+                reason: error.to_string(),
+            })?;
 
         Ok(())
     }

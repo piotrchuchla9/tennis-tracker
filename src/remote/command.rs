@@ -37,10 +37,19 @@ pub enum RemoteCommand {
 /// o koncu miejsca albo przegrzaniu dociera do gracza w trakcie meczu.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum RemoteFeedback {
-    RecordingState { recording: bool, elapsed_seconds: f64 },
-    SyncQuality { residual_ms: f64 },
-    Storage { free_gigabytes: f64 },
-    Warning { text: String },
+    RecordingState {
+        recording: bool,
+        elapsed_seconds: f64,
+    },
+    SyncQuality {
+        residual_ms: f64,
+    },
+    Storage {
+        free_gigabytes: f64,
+    },
+    Warning {
+        text: String,
+    },
 }
 
 /// Komendy, ktore zostawiaja slad w manifescie, zamieniaja sie w zdarzenie.

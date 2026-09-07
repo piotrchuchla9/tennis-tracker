@@ -157,7 +157,9 @@ impl SessionRecorder {
         let locked = self
             .capture
             .lock_settings()
-            .map_err(|error| RecorderError::Capture { reason: error.to_string() })?;
+            .map_err(|error| RecorderError::Capture {
+                reason: error.to_string(),
+            })?;
         self.locked = Some(locked);
         self.state = RecorderState::Armed;
         Ok(())
@@ -174,7 +176,9 @@ impl SessionRecorder {
         }
         self.capture
             .start_recording(session_id, profile)
-            .map_err(|error| RecorderError::Capture { reason: error.to_string() })?;
+            .map_err(|error| RecorderError::Capture {
+                reason: error.to_string(),
+            })?;
         self.session_id = Some(session_id.to_string());
         self.profile = Some(profile);
         self.segment_started = now;
@@ -248,7 +252,9 @@ impl SessionRecorder {
         // niz jego brak — w P1 wyszloby to dopiero po meczu.
         manifest
             .validate()
-            .map_err(|error: ManifestError| RecorderError::Manifest { reason: error.to_string() })?;
+            .map_err(|error: ManifestError| RecorderError::Manifest {
+                reason: error.to_string(),
+            })?;
 
         Ok(manifest)
     }
@@ -258,7 +264,8 @@ impl SessionRecorder {
         if let Ok(segment) = self.capture.stop_recording(now) {
             self.segments.push(segment);
         }
-        self.events.push(SessionEvent::session_stopped(now, reason.as_str()));
+        self.events
+            .push(SessionEvent::session_stopped(now, reason.as_str()));
         self.state = RecorderState::Stopped { reason };
     }
 
@@ -291,7 +298,11 @@ impl SessionRecorder {
                 profile,
                 "hevc".into(),
                 self.config.target_bitrate_mbps,
-                AudioInfo { sample_rate_hz: 48000, channels: 1, codec: "pcm".into() },
+                AudioInfo {
+                    sample_rate_hz: 48000,
+                    channels: 1,
+                    codec: "pcm".into(),
+                },
                 locked,
                 self.capture.intrinsic_matrix(),
             ),
@@ -300,7 +311,11 @@ impl SessionRecorder {
                 first_frame_host_time: first_frame,
                 transport: self.transport.clone(),
                 sync_model: SyncModel::from_fit(&snapshot.model),
-                sync_samples: snapshot.samples.iter().map(SyncSampleRecord::from_sample).collect(),
+                sync_samples: snapshot
+                    .samples
+                    .iter()
+                    .map(SyncSampleRecord::from_sample)
+                    .collect(),
                 sync_gaps: snapshot.gaps.clone(),
             },
             segments: self.segments.clone(),

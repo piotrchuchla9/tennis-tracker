@@ -58,6 +58,7 @@ impl CaptureProfile {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(value: &str) -> Option<Self> {
         match value {
             "1080p120" => Some(CaptureProfile::P1080p120),
@@ -79,7 +80,6 @@ impl serde::Serialize for CaptureProfile {
 
 impl<'de> serde::Deserialize<'de> for CaptureProfile {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        use serde::Deserialize;
         let raw = String::deserialize(deserializer)?;
         CaptureProfile::from_str(&raw)
             .ok_or_else(|| serde::de::Error::custom(format!("nieznany profil: {raw}")))

@@ -33,7 +33,13 @@ impl SeededRandom {
 /// Buduje probke o zadanych, znanych parametrach sciezki.
 /// Odwrotnosc arytmetyki z `ClockSample`, dzieki czemu test wie,
 /// jaka wartosc estymator powinien odzyskac.
-pub fn make_sample(t1: f64, offset: f64, forward: f64, backward: f64, processing: f64) -> ClockSample {
+pub fn make_sample(
+    t1: f64,
+    offset: f64,
+    forward: f64,
+    backward: f64,
+    processing: f64,
+) -> ClockSample {
     let t2 = t1 + forward + offset;
     let t3 = t2 + processing;
     let t4 = t3 - offset + backward;
@@ -93,7 +99,9 @@ pub fn make_series(spec: &SeriesSpec) -> Vec<ClockSample> {
 }
 
 use std::sync::Mutex;
-use tracker_core::link::{decode, Delivery, LinkEnvelope, LinkMessage, PeerTransport, TransportError};
+use tracker_core::link::{
+    decode, Delivery, LinkEnvelope, LinkMessage, PeerTransport, TransportError,
+};
 
 /// Transport w pamieci. Pozwala testom podac dowolna sekwencje pakietow,
 /// wlacznie z duplikatami i kolejnoscia odwrocona.
@@ -128,7 +136,10 @@ impl FakeTransport {
     }
 
     pub fn sent_messages(&self) -> Vec<LinkMessage> {
-        self.sent_envelopes().into_iter().map(|e| e.message).collect()
+        self.sent_envelopes()
+            .into_iter()
+            .map(|e| e.message)
+            .collect()
     }
 
     pub fn sent_count(&self) -> usize {
@@ -157,7 +168,9 @@ impl Default for FakeTransport {
 impl PeerTransport for FakeTransport {
     fn send(&self, data: Vec<u8>, delivery: Delivery) -> Result<(), TransportError> {
         if *self.fail_send.lock().unwrap() {
-            return Err(TransportError::SendFailed { reason: "atrapa".into() });
+            return Err(TransportError::SendFailed {
+                reason: "atrapa".into(),
+            });
         }
         self.sent.lock().unwrap().push((data, delivery));
         Ok(())
@@ -202,11 +215,21 @@ impl FakeCapture {
         }
     }
 
-    pub fn did_lock(&self) -> bool { self.state.lock().unwrap().did_lock }
-    pub fn did_start(&self) -> bool { self.state.lock().unwrap().did_start }
-    pub fn did_stop(&self) -> bool { self.state.lock().unwrap().did_stop }
-    pub fn roll_count(&self) -> usize { self.state.lock().unwrap().roll_count }
-    pub fn set_lock_should_fail(&self, fail: bool) { *self.lock_should_fail.lock().unwrap() = fail; }
+    pub fn did_lock(&self) -> bool {
+        self.state.lock().unwrap().did_lock
+    }
+    pub fn did_start(&self) -> bool {
+        self.state.lock().unwrap().did_start
+    }
+    pub fn did_stop(&self) -> bool {
+        self.state.lock().unwrap().did_stop
+    }
+    pub fn roll_count(&self) -> usize {
+        self.state.lock().unwrap().roll_count
+    }
+    pub fn set_lock_should_fail(&self, fail: bool) {
+        *self.lock_should_fail.lock().unwrap() = fail;
+    }
 
     fn close_segment(&self, state: &mut FakeCaptureState, now: f64) -> SegmentInfo {
         let info = SegmentInfo {
@@ -222,7 +245,9 @@ impl FakeCapture {
 }
 
 impl Default for FakeCapture {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CaptureControlling for FakeCapture {
@@ -235,11 +260,19 @@ impl CaptureControlling for FakeCapture {
             exposure_duration_seconds: 0.001,
             iso: 64.0,
             focus_lens_position: 0.82,
-            white_balance_gains: WhiteBalanceGains { r: 1.9, g: 1.0, b: 1.6 },
+            white_balance_gains: WhiteBalanceGains {
+                r: 1.9,
+                g: 1.0,
+                b: 1.6,
+            },
         })
     }
 
-    fn start_recording(&self, _session_id: &str, _profile: CaptureProfile) -> Result<(), CaptureError> {
+    fn start_recording(
+        &self,
+        _session_id: &str,
+        _profile: CaptureProfile,
+    ) -> Result<(), CaptureError> {
         let mut state = self.state.lock().unwrap();
         state.did_start = true;
         state.segment_start = 1000.05;
@@ -258,7 +291,9 @@ impl CaptureControlling for FakeCapture {
         Ok(self.close_segment(&mut state, now))
     }
 
-    fn first_frame_host_time(&self) -> Option<f64> { Some(1000.05) }
+    fn first_frame_host_time(&self) -> Option<f64> {
+        Some(1000.05)
+    }
 
     fn intrinsic_matrix(&self) -> Option<Vec<Vec<f64>>> {
         Some(vec![
@@ -268,7 +303,9 @@ impl CaptureControlling for FakeCapture {
         ])
     }
 
-    fn lens_name(&self) -> String { "builtInWideAngleCamera".into() }
+    fn lens_name(&self) -> String {
+        "builtInWideAngleCamera".into()
+    }
 }
 
 pub struct FakeStorage {
@@ -276,16 +313,26 @@ pub struct FakeStorage {
 }
 
 impl FakeStorage {
-    pub fn new() -> Self { Self { free: Mutex::new(64_000_000_000) } }
-    pub fn set_free_bytes(&self, bytes: i64) { *self.free.lock().unwrap() = bytes; }
+    pub fn new() -> Self {
+        Self {
+            free: Mutex::new(64_000_000_000),
+        }
+    }
+    pub fn set_free_bytes(&self, bytes: i64) {
+        *self.free.lock().unwrap() = bytes;
+    }
 }
 
 impl Default for FakeStorage {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StorageProbing for FakeStorage {
-    fn free_bytes(&self) -> i64 { *self.free.lock().unwrap() }
+    fn free_bytes(&self) -> i64 {
+        *self.free.lock().unwrap()
+    }
 }
 
 pub struct FakeThermal {
@@ -293,14 +340,24 @@ pub struct FakeThermal {
 }
 
 impl FakeThermal {
-    pub fn new() -> Self { Self { level: Mutex::new(ThermalLevel::Nominal) } }
-    pub fn set_level(&self, level: ThermalLevel) { *self.level.lock().unwrap() = level; }
+    pub fn new() -> Self {
+        Self {
+            level: Mutex::new(ThermalLevel::Nominal),
+        }
+    }
+    pub fn set_level(&self, level: ThermalLevel) {
+        *self.level.lock().unwrap() = level;
+    }
 }
 
 impl Default for FakeThermal {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ThermalProbing for FakeThermal {
-    fn thermal_level(&self) -> ThermalLevel { *self.level.lock().unwrap() }
+    fn thermal_level(&self) -> ThermalLevel {
+        *self.level.lock().unwrap()
+    }
 }

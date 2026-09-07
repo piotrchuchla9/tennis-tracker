@@ -117,12 +117,16 @@ impl PeerLink {
             sequence
         };
 
-        let bytes = encode(&LinkEnvelope { sequence, message })
-            .map_err(|error| LinkError::Codec { reason: error.to_string() })?;
+        let bytes =
+            encode(&LinkEnvelope { sequence, message }).map_err(|error| LinkError::Codec {
+                reason: error.to_string(),
+            })?;
 
         self.transport
             .send(bytes, delivery)
-            .map_err(|error| LinkError::Transport { reason: error.to_string() })
+            .map_err(|error| LinkError::Transport {
+                reason: error.to_string(),
+            })
     }
 
     /// Zwraca wiadomosc, jesli pakiet jest poprawny i nie jest duplikatem.

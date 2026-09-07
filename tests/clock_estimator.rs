@@ -13,7 +13,10 @@ fn estimator_with(samples: &[ClockSample]) -> ClockSyncEstimator {
 
 #[test]
 fn returns_none_below_minimum_sample_count() {
-    let samples = make_series(&SeriesSpec { count: 5, ..Default::default() });
+    let samples = make_series(&SeriesSpec {
+        count: 5,
+        ..Default::default()
+    });
     assert!(estimator_with(&samples).fit().is_none());
 }
 
@@ -26,11 +29,21 @@ fn recovers_offset_with_no_skew() {
         seed: 2,
         ..Default::default()
     });
-    let fit = estimator_with(&samples).fit().expect("model powinien powstac");
+    let fit = estimator_with(&samples)
+        .fit()
+        .expect("model powinien powstac");
 
-    assert!((fit.offset_seconds - 0.25).abs() < 0.0005, "offset = {}", fit.offset_seconds);
+    assert!(
+        (fit.offset_seconds - 0.25).abs() < 0.0005,
+        "offset = {}",
+        fit.offset_seconds
+    );
     assert!(fit.skew_ppm.abs() < 5.0, "skew = {}", fit.skew_ppm);
-    assert!(fit.residual_std_ms < 1.0, "residual = {}", fit.residual_std_ms);
+    assert!(
+        fit.residual_std_ms < 1.0,
+        "residual = {}",
+        fit.residual_std_ms
+    );
 }
 
 #[test]
@@ -43,7 +56,9 @@ fn recovers_skew_over_long_series() {
         seed: 3,
         ..Default::default()
     });
-    let fit = estimator_with(&samples).fit().expect("model powinien powstac");
+    let fit = estimator_with(&samples)
+        .fit()
+        .expect("model powinien powstac");
 
     assert!((fit.skew_ppm - 20.0).abs() < 1.0, "skew = {}", fit.skew_ppm);
 }
@@ -59,9 +74,15 @@ fn outliers_are_rejected_by_delay_filter() {
         outlier_every: Some(10),
         ..Default::default()
     });
-    let fit = estimator_with(&samples).fit().expect("model powinien powstac");
+    let fit = estimator_with(&samples)
+        .fit()
+        .expect("model powinien powstac");
 
-    assert!((fit.offset_seconds - 0.25).abs() < 0.002, "offset = {}", fit.offset_seconds);
+    assert!(
+        (fit.offset_seconds - 0.25).abs() < 0.002,
+        "offset = {}",
+        fit.offset_seconds
+    );
     assert!((fit.skew_ppm - 5.0).abs() < 2.0, "skew = {}", fit.skew_ppm);
 }
 
@@ -69,7 +90,12 @@ fn outliers_are_rejected_by_delay_filter() {
 fn survives_gap_in_series() {
     // 60 probek, przerwa 300 s, kolejne 60 probek
     let first = make_series(&SeriesSpec {
-        start: 1000.0, count: 60, offset0: 0.10, skew_ppm: 10.0, seed: 5, ..Default::default()
+        start: 1000.0,
+        count: 60,
+        offset0: 0.10,
+        skew_ppm: 10.0,
+        seed: 5,
+        ..Default::default()
     });
     let second = make_series(&SeriesSpec {
         start: 1360.0,
@@ -89,14 +115,27 @@ fn survives_gap_in_series() {
 fn window_drops_oldest_samples() {
     let mut estimator = ClockSyncEstimator::new();
     estimator.window_size = 50;
-    for sample in make_series(&SeriesSpec { count: 200, offset0: 0.10, seed: 7, ..Default::default() }) {
+    for sample in make_series(&SeriesSpec {
+        count: 200,
+        offset0: 0.10,
+        seed: 7,
+        ..Default::default()
+    }) {
         estimator.add(sample);
     }
 
     let fit = estimator.fit().expect("model powinien powstac");
-    assert!(fit.sample_count <= 50, "sample_count = {}", fit.sample_count);
+    assert!(
+        fit.sample_count <= 50,
+        "sample_count = {}",
+        fit.sample_count
+    );
     // punkt odniesienia musi lezec w ostatnim oknie, nie na poczatku serii
-    assert!(fit.reference_time > 1140.0, "reference = {}", fit.reference_time);
+    assert!(
+        fit.reference_time > 1140.0,
+        "reference = {}",
+        fit.reference_time
+    );
 }
 
 #[test]

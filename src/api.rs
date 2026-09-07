@@ -10,11 +10,9 @@
 use std::sync::{Arc, Mutex};
 
 use crate::clock::{SyncSession, SyncSnapshot};
-use crate::device::{
-    estimate_timestamp_base_offset, CapabilityProbeResult, CapabilityReport,
-};
+use crate::device::{estimate_timestamp_base_offset, CapabilityProbeResult, CapabilityReport};
 use crate::link::{LinkMessage, PeerLink, PeerTransport};
-use crate::session::{MatchSetup, ManifestError, SessionManifest};
+use crate::session::{ManifestError, MatchSetup, SessionManifest};
 
 #[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BaseOffsetEstimate {
@@ -80,7 +78,11 @@ impl SyncEngine {
 
     /// Jakosc synchronizacji w milisekundach. `None`, dopoki model nie powstal.
     pub fn residual_ms(&self) -> Option<f64> {
-        self.session.lock().unwrap().current_fit().map(|fit| fit.residual_std_ms)
+        self.session
+            .lock()
+            .unwrap()
+            .current_fit()
+            .map(|fit| fit.residual_std_ms)
     }
 }
 

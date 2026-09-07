@@ -3,7 +3,10 @@ use tracker_core::link::{decode, encode, LinkEnvelope, LinkMessage};
 use tracker_core::session::{CaptureProfile, SessionRole};
 
 fn round_trip(message: LinkMessage) {
-    let envelope = LinkEnvelope { sequence: 42, message };
+    let envelope = LinkEnvelope {
+        sequence: 42,
+        message,
+    };
     let bytes = encode(&envelope).expect("kodowanie powinno sie udac");
     let decoded = decode(&bytes).expect("dekodowanie powinno sie udac");
     assert_eq!(decoded, envelope);
@@ -16,9 +19,16 @@ fn round_trips_every_message_case() {
         app_version: "0.1.0".into(),
         preferred_role: SessionRole::Master,
     });
-    round_trip(LinkMessage::RoleAssigned { role: SessionRole::Slave });
+    round_trip(LinkMessage::RoleAssigned {
+        role: SessionRole::Slave,
+    });
     round_trip(LinkMessage::Ping { id: 7, t1: 1000.5 });
-    round_trip(LinkMessage::Pong { id: 7, t1: 1000.5, t2: 1000.75, t3: 1000.751 });
+    round_trip(LinkMessage::Pong {
+        id: 7,
+        t1: 1000.5,
+        t2: 1000.75,
+        t3: 1000.751,
+    });
     round_trip(LinkMessage::StartRecording {
         session_id: "s-1".into(),
         profile: CaptureProfile::P1080p120,
@@ -60,8 +70,14 @@ fn profile_strings_match_manifest_vocabulary() {
     assert_eq!(CaptureProfile::P1080p60.as_str(), "1080p60");
     assert_eq!(CaptureProfile::P1080p30.as_str(), "1080p30");
 
-    assert_eq!(CaptureProfile::from_str("1080p120"), Some(CaptureProfile::P1080p120));
-    assert_eq!(CaptureProfile::from_str("4K60"), Some(CaptureProfile::P4k60));
+    assert_eq!(
+        CaptureProfile::from_str("1080p120"),
+        Some(CaptureProfile::P1080p120)
+    );
+    assert_eq!(
+        CaptureProfile::from_str("4K60"),
+        Some(CaptureProfile::P4k60)
+    );
     assert_eq!(CaptureProfile::from_str("bzdura"), None);
 }
 

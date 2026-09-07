@@ -24,7 +24,10 @@ fn full_tier_for_capable_device() {
 
 #[test]
 fn missing_manual_sensor_drops_to_limited() {
-    let probe = CapabilityProbeResult { manual_sensor: false, ..ios_probe() };
+    let probe = CapabilityProbeResult {
+        manual_sensor: false,
+        ..ios_probe()
+    };
     assert_eq!(probe.evaluate().tier, DeviceTier::Limited);
 }
 
@@ -39,20 +42,30 @@ fn unknown_timestamp_source_drops_to_limited() {
 
 #[test]
 fn missing_exposure_lock_is_rejected() {
-    let probe = CapabilityProbeResult { manual_sensor: false, exposure_lock: false, ..ios_probe() };
+    let probe = CapabilityProbeResult {
+        manual_sensor: false,
+        exposure_lock: false,
+        ..ios_probe()
+    };
     assert_eq!(probe.evaluate().tier, DeviceTier::Rejected);
 }
 
 #[test]
 fn too_few_frames_per_second_is_rejected() {
-    let probe = CapabilityProbeResult { max_fps: 24, ..ios_probe() };
+    let probe = CapabilityProbeResult {
+        max_fps: 24,
+        ..ios_probe()
+    };
     assert_eq!(probe.evaluate().tier, DeviceTier::Rejected);
 }
 
 #[test]
 fn exposure_too_long_drops_to_limited() {
     // sensor nie schodzi ponizej 1/250 s
-    let probe = CapabilityProbeResult { min_exposure_seconds: 0.004, ..ios_probe() };
+    let probe = CapabilityProbeResult {
+        min_exposure_seconds: 0.004,
+        ..ios_probe()
+    };
     assert_eq!(probe.evaluate().tier, DeviceTier::Limited);
 }
 

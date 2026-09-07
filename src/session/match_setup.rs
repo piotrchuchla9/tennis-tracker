@@ -35,11 +35,12 @@ impl serde::Serialize for MatchFormat {
 
 impl<'de> serde::Deserialize<'de> for MatchFormat {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        use serde::Deserialize;
         let raw = String::deserialize(deserializer)?;
         match raw.as_str() {
             "singles-ad-tiebreak" => Ok(MatchFormat::SinglesAdTiebreak),
-            other => Err(serde::de::Error::custom(format!("nieznany format: {other}"))),
+            other => Err(serde::de::Error::custom(format!(
+                "nieznany format: {other}"
+            ))),
         }
     }
 }
@@ -117,19 +118,29 @@ impl MatchSetup {
     /// liczba zmian oznacza powrot na koniec startowy.
     pub fn end_of(&self, id: &str, completed_games: u32) -> Option<CourtEnd> {
         let player = self.player(id)?;
-        let swaps = (completed_games + 1) / 2;
-        Some(if swaps % 2 == 0 { player.start_end } else { player.start_end.opposite() })
+        let swaps = completed_games.div_ceil(2);
+        Some(if swaps.is_multiple_of(2) {
+            player.start_end
+        } else {
+            player.start_end.opposite()
+        })
     }
 
     pub fn validate(&self) -> Result<(), MatchSetupError> {
         if self.players.len() != 2 {
-            return Err(MatchSetupError::WrongPlayerCount { count: self.players.len() as u32 });
+            return Err(MatchSetupError::WrongPlayerCount {
+                count: self.players.len() as u32,
+            });
         }
         if self.players[0].id == self.players[1].id {
-            return Err(MatchSetupError::DuplicateId { id: self.players[0].id.clone() });
+            return Err(MatchSetupError::DuplicateId {
+                id: self.players[0].id.clone(),
+            });
         }
         if self.player(&self.first_server).is_none() {
-            return Err(MatchSetupError::UnknownServer { id: self.first_server.clone() });
+            return Err(MatchSetupError::UnknownServer {
+                id: self.first_server.clone(),
+            });
         }
         if self.players[0].start_end == self.players[1].start_end {
             return Err(MatchSetupError::SameEnd);

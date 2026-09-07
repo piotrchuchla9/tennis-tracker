@@ -41,7 +41,11 @@ pub enum CaptureError {
 /// jest niedostepna.
 pub trait CaptureControlling: Send + Sync {
     fn lock_settings(&self) -> Result<LockedCameraSettings, CaptureError>;
-    fn start_recording(&self, session_id: &str, profile: CaptureProfile) -> Result<(), CaptureError>;
+    fn start_recording(
+        &self,
+        session_id: &str,
+        profile: CaptureProfile,
+    ) -> Result<(), CaptureError>;
     /// Zamyka biezacy segment i otwiera nastepny. Zwraca zamkniety segment.
     fn roll_segment(&self, now: f64) -> Result<SegmentInfo, CaptureError>;
     /// Zamyka biezacy segment i konczy nagrywanie.

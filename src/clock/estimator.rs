@@ -102,7 +102,11 @@ impl ClockSyncEstimator {
             sum_squares += residual * residual;
         }
         // Dwa stopnie swobody zjada dopasowana prosta.
-        let variance = if chosen.len() > 2 { sum_squares / (n - 2.0) } else { 0.0 };
+        let variance = if chosen.len() > 2 {
+            sum_squares / (n - 2.0)
+        } else {
+            0.0
+        };
 
         Some(ClockFit {
             reference_time: reference,
