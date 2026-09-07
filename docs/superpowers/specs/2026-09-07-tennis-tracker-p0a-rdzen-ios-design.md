@@ -34,7 +34,7 @@ Format meczu: **singiel**, pełne sety, tiebreak przy 6:6, przewaga (ad).
 
 **Do liczenia punktów stereo nie jest potrzebne.** W chwili kozła piłka dotyka płaszczyzny kortu, więc homografia przenosi punkt z obrazu wprost we współrzędne kortu. Jedna skalibrowana kamera wystarcza do orzeczenia, gdzie piłka odbiła. Stereo jest potrzebne dopiero do pełnej trajektorii 3D.
 
-**Kamera musi widzieć powierzchnię kortu, nie całą przestrzeń gry.** Wszystko, co decyduje o punkcie — kozioł, przekroczenie siatki — dzieje się na ziemi lub tuż nad nią. Apogeum loba nie decyduje o niczym, więc jego utrata z kadru jest akceptowana (patrz sekcja 14).
+**Kamera musi widzieć powierzchnię kortu, nie całą przestrzeń gry.** Wszystko, co decyduje o punkcie — kozioł, przekroczenie siatki — dzieje się na ziemi lub tuż nad nią. Apogeum loba nie decyduje o niczym, więc jego utrata z kadru jest akceptowana (patrz sekcja 15).
 
 ### Dekompozycja na podprojekty
 
@@ -137,8 +137,8 @@ session-2026-09-14-1732/
   "peerDeviceModel": "iPhone15,4",
   "match": {
     "players": [
-      { "id": "p1", "name": "Piotr", "startEnd": "north" },
-      { "id": "p2", "name": "Marek", "startEnd": "south" }
+      { "id": "p1", "name": "Piotr", "genitive": "Piotra", "startEnd": "north" },
+      { "id": "p2", "name": "Marek", "genitive": "Marka", "startEnd": "south" }
     ],
     "firstServer": "p1",
     "format": "singles-ad-tiebreak"
@@ -445,7 +445,61 @@ W P0a punktacji nie ma, więc zmiana stron jest po prostu kolejnym tagiem `MarkM
 
 Dane pozostają lokalnie na urządzeniu — bez konta i bez chmury.
 
-## 11. Przebieg sesji
+## 11. Lokalizacja
+
+### Trzy rodzaje tekstu, trzy różne reguły
+
+| Rodzaj | Gdzie żyje | Tłumaczony? |
+|---|---|---|
+| Teksty interfejsu | String Catalog w aplikacjach | **tak** |
+| Ogłoszenia głosowe | silnik ogłoszeń (P2) | **tak, według reguł języka** |
+| Format danych — klucze JSON, wartości enumów | rdzeń | **nigdy** |
+
+Trzeci wiersz jest twardy. Wartości takie jak `"tier": "full"`, `"reason": "link-lost"` czy `"1080p120"` stanowią **słownik protokołu**, nie tekst dla człowieka. Ich przetłumaczenie zepsułoby manifesty i pipeline P1.
+
+### Angielski jako język bazowy
+
+Development language aplikacji to **angielski**; polski jest pierwszą dodaną lokalizacją.
+
+Przy tym ustawieniu brakujące tłumaczenie degraduje się do angielskiego, czyli do języka zrozumiałego dla najszerszego grona. Odwrotny wybór oznaczałby, że użytkownik z angielskim telefonem widzi polskie napisy wszędzie tam, gdzie tłumaczenia zabrakło.
+
+### Błędy rdzenia są typowane, nie napisowe
+
+Komunikaty `Display` typów błędów w rdzeniu pisane są **po angielsku** i przeznaczone wyłącznie dla logów i deweloperów. Interfejs użytkownika **nigdy ich nie wyświetla** — mapuje wariant enuma na zlokalizowany komunikat.
+
+Powód jest konkretny: napisy z rdzenia przechodzą przez granicę FFI. Gdyby były po polsku, użytkownik z angielskim telefonem zobaczyłby polski tekst niezależnie od ustawień. Pola typu `reason: String` w wariantach błędów służą logom, nie prezentacji.
+
+Komentarze w kodzie pozostają po polsku — nie są wyjściem runtime.
+
+### Ogłoszenia to nie interpolacja napisów
+
+Trudność językowa siedzi w ogłoszeniach głosowych, nie w interfejsie, i dlatego należy do P2.
+
+**Odmiana imion.** Angielskie „point for Piotr" to po polsku „punkt dla **Piotra**" — dopełniacz. Imię „Marek" daje „**Marka**", z wypadnięciem *e*. Odmiany nie da się wyliczyć algorytmicznie w sposób pewny.
+
+Rozwiązanie dwutorowe:
+
+1. **Konstrukcje unikające przypadków zależnych** jako domyślne. Tenis ogłasza najpierw wynik serwującego, więc imię często jest zbędne: „trzydzieści piętnaście", „gem — Piotr" (mianownik). Zawsze poprawne.
+2. **Opcjonalne pole dopełniacza** w `Player`, wypełniane raz przy dodawaniu gracza do listy. Gdy jest obecne, ogłoszenia mogą brzmieć naturalniej.
+
+**Terminologia bez odpowiednika.** Angielskie „love" to po prostu „zero"; „deuce" to „równowaga"; „advantage" to „przewaga". To nie jest tłumaczenie słowo w słowo, tylko osobny zestaw reguł na język.
+
+Stąd wymaganie architektoniczne dla P2: silnik ogłoszeń **nie interpoluje napisów**, tylko zamienia stan gry na zdanie według reguł danego języka. Wejściem jest struktura opisująca stan, nie tekst.
+
+### Język ogłoszeń niezależny od języka interfejsu
+
+To dwa osobne ustawienia. Gra z polskimi znajomymi przy telefonie ustawionym na angielski jest sytuacją typową, a `AVSpeechSynthesisVoice` i tak wymaga jawnego podania locale.
+
+### Zakres w P0a
+
+- Development language **angielski**, polski jako dodana lokalizacja, String Catalog (`.xcstrings`)
+- Komunikaty `Display` w rdzeniu po angielsku; interfejs mapuje warianty błędów
+- Format danych nigdy nie lokalizowany
+- Opcjonalne pole `genitive` w `Player` — tanie teraz, kosztowne później, bo zmienia schemat manifestu
+
+Silnik ogłoszeń z regułami językowymi powstaje w P2.
+
+## 12. Przebieg sesji
 
 1. Aplikacja uruchomiona na obu telefonach; obie strony ogłaszają się i szukają, łączą się automatycznie.
 2. Wybór roli — jawny przełącznik, domyślnie iPhone 16 Pro Max jako master.
@@ -458,7 +512,7 @@ Dane pozostają lokalnie na urządzeniu — bez konta i bez chmury.
 9. Stop — oba urządzenia finalizują zapis i wymieniają końcowy log synchronizacji, tak aby **oba manifesty zawierały komplet**.
 10. Eksport na Maca.
 
-## 12. Obsługa awarii
+## 13. Obsługa awarii
 
 **Zasada nadrzędna: utrata łączności nigdy nie zatrzymuje nagrywania.** Każde urządzenie zapisuje lokalnie i samodzielnie. Łącze służy wyłącznie do komend i synchronizacji.
 
@@ -473,7 +527,7 @@ Dane pozostają lokalnie na urządzeniu — bez konta i bez chmury.
 | Utrata łączności z zegarkiem | Nagrywanie trwa. Sterowanie wraca na telefon. |
 | Wygaśnięcie apki | Data wygaśnięcia provisioningu widoczna na ekranie głównym. |
 
-## 13. Testy
+## 14. Testy
 
 Praca prowadzona metodą TDD. Podział modułów jest podporządkowany testowalności: cała logika mieszka w rdzeniu Rust, poza warstwą sprzętową.
 
@@ -499,7 +553,7 @@ Praca prowadzona metodą TDD. Podział modułów jest podporządkowany testowaln
 
 Ten sam skrypt wczytuje sesję z obu telefonów i sprawdza spójność manifestów, wspólną oś czasu oraz ciągłość segmentów. Stanowi zalążek pipeline'u P1.
 
-## 14. Warunki nagrywania i zadanie pomiarowe kadru
+## 15. Warunki nagrywania i zadanie pomiarowe kadru
 
 Odłożone do pierwszego wyjścia na kort. Zapisane tutaj, żeby nie zniknęło.
 
@@ -532,7 +586,7 @@ Kilka minut nagrania z celowymi lobami i głębokimi piłkami, a następnie pomi
 
 Odpowiada to empirycznie na pytanie o kadrowanie, pochylenie i wybór profilu, zamiast rozstrzygać je przy biurku.
 
-## 15. Kryteria ukończenia P0a
+## 16. Kryteria ukończenia P0a
 
 1. `cargo test` przechodzi w całości.
 2. `pytest` narzędzia weryfikującego przechodzi w całości.
@@ -547,7 +601,7 @@ Odpowiada to empirycznie na pytanie o kadrowanie, pochylenie i wybór profilu, z
 11. Sesja eksportowalna na Maca i wczytywalna narzędziem weryfikującym.
 12. Zweryfikowana dostępność uprawnienia `HotspotConfiguration` na darmowym provisioningu (wynik odnotowany, niezależnie od tego, jaki jest).
 
-## 16. Co P0a przekazuje dalej
+## 17. Co P0a przekazuje dalej
 
 **Do P0b:** rdzeń Rust z kompletem testów, protokół łącza, model manifestu, `MatchSetup`, zestaw komend pilota, interfejsy portów zaprojektowane pod ograniczenia Camera2.
 

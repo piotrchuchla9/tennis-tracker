@@ -27,6 +27,7 @@
 - **Utrata łączności nigdy nie zatrzymuje nagrywania.**
 - Klucze JSON w manifeście są w `camelCase`, pola Rusta w `snake_case` — mapowanie przez `#[serde(rename_all = "camelCase")]`.
 - Komentarze w kodzie: polski, bez znaków diakrytycznych (unikamy problemów z kodowaniem w narzędziach). Nazwy symboli: angielski.
+- **Komunikaty `Display` typów błędów: angielski.** Przechodzą przez granicę FFI i są przeznaczone dla logów, nie dla użytkownika — interfejs mapuje wariant enuma na zlokalizowany tekst i nigdy nie wyświetla pola `reason`.
 - Każdy typ danych przekraczający granicę FFI dostaje `#[derive(uniffi::Record)]` albo `#[derive(uniffi::Enum)]` już w zadaniu, które go tworzy. Typy stanowe (z mutowalnym stanem wewnętrznym) eksportowane są jako `uniffi::Object` dopiero w zadaniu 13.
 
 ---
@@ -1081,7 +1082,7 @@ use super::LinkEnvelope;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum CodecError {
-    #[error("blad serializacji: {reason}")]
+    #[error("serialization error: {reason}")]
     Serialization { reason: String },
 }
 
@@ -1353,17 +1354,17 @@ const SEQUENCE_MEMORY: usize = 1024;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum TransportError {
-    #[error("wysylka nieudana: {reason}")]
+    #[error("send failed: {reason}")]
     SendFailed { reason: String },
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum LinkError {
-    #[error("brak polaczenia")]
+    #[error("not connected")]
     NotConnected,
-    #[error("blad transportu: {reason}")]
+    #[error("transport error: {reason}")]
     Transport { reason: String },
-    #[error("blad kodowania: {reason}")]
+    #[error("codec error: {reason}")]
     Codec { reason: String },
 }
 
@@ -2153,7 +2154,7 @@ git commit -m "feat(device): raport zdolnosci i estymacja przesuniecia baz zegar
 
 **Interfaces:**
 - Consumes: nic
-- Produces: `CourtEnd` (`North`, `South`, z `opposite()`), `Player { id: String, name: String, start_end: CourtEnd }`, `MatchFormat` (`SinglesAdTiebreak`, z `as_str()`), `MatchSetup { players: Vec<Player>, first_server: String, format: MatchFormat }` z `default_singles()`, `validate() -> Result<(), MatchSetupError>`, `player(&self, id: &str) -> Option<&Player>`, `end_of(&self, id: &str, completed_games: u32) -> Option<CourtEnd>`
+- Produces: `CourtEnd` (`North`, `South`, z `opposite()`), `Player { id: String, name: String, genitive: Option<String>, start_end: CourtEnd }`, `MatchFormat` (`SinglesAdTiebreak`, z `as_str()`), `MatchSetup { players: Vec<Player>, first_server: String, format: MatchFormat }` z `default_singles()`, `validate() -> Result<(), MatchSetupError>`, `player(&self, id: &str) -> Option<&Player>`, `end_of(&self, id: &str, completed_games: u32) -> Option<CourtEnd>`
 
 - [ ] **Step 1: Napisz testy, które mają nie przejść**
 
@@ -2165,8 +2166,18 @@ use tracker_core::session::{CourtEnd, MatchFormat, MatchSetup, Player};
 fn setup() -> MatchSetup {
     MatchSetup {
         players: vec![
-            Player { id: "p1".into(), name: "Piotr".into(), start_end: CourtEnd::North },
-            Player { id: "p2".into(), name: "Marek".into(), start_end: CourtEnd::South },
+            Player {
+                id: "p1".into(),
+                name: "Piotr".into(),
+                genitive: Some("Piotra".into()),
+                start_end: CourtEnd::North,
+            },
+            Player {
+                id: "p2".into(),
+                name: "Marek".into(),
+                genitive: Some("Marka".into()),
+                start_end: CourtEnd::South,
+            },
         ],
         first_server: "p1".into(),
         format: MatchFormat::SinglesAdTiebreak,
@@ -2178,8 +2189,11 @@ fn default_singles_is_valid_and_anonymous() {
     let default = MatchSetup::default_singles();
     assert!(default.validate().is_ok());
     assert_eq!(default.players.len(), 2);
-    assert_eq!(default.players[0].name, "Gracz 1");
-    assert_eq!(default.players[1].name, "Gracz 2");
+    assert_eq!(default.players[0].name, "Player 1");
+    assert_eq!(default.players[1].name, "Player 2");
+    // Nazwy domyslne sa w jezyku bazowym (angielskim); UI podmienia je
+    // na zlokalizowane przy wyswietlaniu, nie w rdzeniu.
+    assert!(default.players.iter().all(|p| p.genitive.is_none()));
     assert_ne!(default.players[0].start_end, default.players[1].start_end);
 }
 
@@ -2244,6 +2258,17 @@ fn both_players_always_face_each_other() {
         let b = s.end_of("p2", games).unwrap();
         assert_ne!(a, b, "po {games} gemach gracze staneli po tej samej stronie");
     }
+}
+
+/// Dopelniacz jest opcjonalny — jego brak nie moze blokowac niczego,
+/// bo oglaszanie domyslnie uzywa konstrukcji w mianowniku.
+#[test]
+fn genitive_is_optional_and_does_not_affect_validation() {
+    let mut s = setup();
+    assert_eq!(s.player("p1").and_then(|p| p.genitive.as_deref()), Some("Piotra"));
+
+    s.players[0].genitive = None;
+    assert!(s.validate().is_ok());
 }
 
 #[test]
@@ -2319,18 +2344,25 @@ impl<'de> serde::Deserialize<'de> for MatchFormat {
 pub struct Player {
     pub id: String,
     pub name: String,
+    /// Dopelniacz imienia, np. "Piotra" dla "Piotr".
+    ///
+    /// Uzywany przez silnik oglosen w P2: "punkt dla **Piotra**". Polskiej
+    /// odmiany nie da sie wyliczyc algorytmicznie w sposob pewny — "Marek"
+    /// daje "Marka", z wypadnieciem e. Pole jest opcjonalne, bo oglaszanie
+    /// domyslnie uzywa konstrukcji nie wymagajacych przypadkow zaleznych.
+    pub genitive: Option<String>,
     pub start_end: CourtEnd,
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum MatchSetupError {
-    #[error("oczekiwano 2 graczy, jest {count}")]
+    #[error("expected 2 players, got {count}")]
     WrongPlayerCount { count: u32 },
-    #[error("powtorzony identyfikator gracza: {id}")]
+    #[error("duplicate player id: {id}")]
     DuplicateId { id: String },
-    #[error("serwujacy {id} nie jest jednym z graczy")]
+    #[error("first server {id} is not among the players")]
     UnknownServer { id: String },
-    #[error("obaj gracze po tej samej stronie kortu")]
+    #[error("both players on the same court end")]
     SameEnd,
 }
 
@@ -2351,8 +2383,18 @@ impl MatchSetup {
     pub fn default_singles() -> Self {
         Self {
             players: vec![
-                Player { id: "p1".into(), name: "Gracz 1".into(), start_end: CourtEnd::North },
-                Player { id: "p2".into(), name: "Gracz 2".into(), start_end: CourtEnd::South },
+                Player {
+                    id: "p1".into(),
+                    name: "Player 1".into(),
+                    genitive: None,
+                    start_end: CourtEnd::North,
+                },
+                Player {
+                    id: "p2".into(),
+                    name: "Player 2".into(),
+                    genitive: None,
+                    start_end: CourtEnd::South,
+                },
             ],
             first_server: "p1".into(),
             format: MatchFormat::SinglesAdTiebreak,
@@ -2397,7 +2439,7 @@ W `src/session/mod.rs` dodaj `mod match_setup;` oraz `pub use match_setup::{Cour
 - [ ] **Step 4: Uruchom testy i potwierdź, że przechodzą**
 
 Run: `cargo test --test match_setup`
-Expected: PASS, 11 testów
+Expected: PASS, 12 testów
 
 - [ ] **Step 5: Commit**
 
@@ -2515,6 +2557,15 @@ fn json_round_trip() {
     let original = sample_manifest();
     let decoded = SessionManifest::decode(&original.encode().unwrap()).unwrap();
     assert_eq!(decoded, original);
+}
+
+#[test]
+fn player_genitive_survives_round_trip() {
+    let mut m = sample_manifest();
+    m.match_setup.players[0].genitive = Some("Piotra".into());
+
+    let decoded = SessionManifest::decode(&m.encode().unwrap()).unwrap();
+    assert_eq!(decoded.match_setup.players[0].genitive.as_deref(), Some("Piotra"));
 }
 
 #[test]
@@ -2883,21 +2934,21 @@ impl SessionEvent {
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum ManifestError {
-    #[error("nieobslugiwana wersja schematu: {version}")]
+    #[error("unsupported schema version: {version}")]
     UnsupportedSchemaVersion { version: u32 },
-    #[error("brak segmentow")]
+    #[error("no segments")]
     NoSegments,
-    #[error("ciaglosc segmentow przerwana przed indeksem {index}")]
+    #[error("segments not contiguous before index {index}")]
     SegmentsNotContiguous { index: u32 },
-    #[error("pierwsza klatka poza pierwszym segmentem")]
+    #[error("first frame outside first segment")]
     FirstFrameOutsideFirstSegment,
-    #[error("macierz intrinsics nie jest 3x3")]
+    #[error("intrinsic matrix is not 3x3")]
     MalformedIntrinsicMatrix,
-    #[error("model synchronizacji zawiera wartosc nieskonczona")]
+    #[error("sync model contains a non-finite value")]
     NonFiniteSyncModel,
-    #[error("niepoprawne ustawienie meczu: {reason}")]
+    #[error("invalid match setup: {reason}")]
     InvalidMatchSetup { reason: String },
-    #[error("blad serializacji: {reason}")]
+    #[error("serialization error: {reason}")]
     Serialization { reason: String },
 }
 
@@ -2992,7 +3043,7 @@ pub use manifest::{
 - [ ] **Step 4: Uruchom testy i potwierdź, że przechodzą**
 
 Run: `cargo test --test manifest`
-Expected: PASS, 17 testów
+Expected: PASS, 18 testów
 
 - [ ] **Step 5: Commit**
 
@@ -3231,13 +3282,13 @@ impl ThermalLevel {
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum CaptureError {
-    #[error("kamera niedostepna")]
+    #[error("camera unavailable")]
     NoCamera,
-    #[error("profil niedostepny: {profile}")]
+    #[error("profile unavailable: {profile}")]
     ProfileUnavailable { profile: String },
-    #[error("nie nagrywa")]
+    #[error("not recording")]
     NotRecording,
-    #[error("blad kamery: {reason}")]
+    #[error("camera error: {reason}")]
     Other { reason: String },
 }
 
@@ -3754,15 +3805,15 @@ impl Default for RecorderConfig {
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum RecorderError {
-    #[error("niepoprawny stan")]
+    #[error("wrong state")]
     WrongState,
-    #[error("za malo miejsca na dysku")]
+    #[error("insufficient storage")]
     InsufficientStorage,
-    #[error("sesja nie zostala rozpoczeta")]
+    #[error("session not started")]
     NotStarted,
-    #[error("blad kamery: {reason}")]
+    #[error("camera error: {reason}")]
     Capture { reason: String },
-    #[error("blad manifestu: {reason}")]
+    #[error("manifest error: {reason}")]
     Manifest { reason: String },
 }
 
