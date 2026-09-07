@@ -34,7 +34,7 @@ Format meczu: **singiel**, pełne sety, tiebreak przy 6:6, przewaga (ad).
 
 **Do liczenia punktów stereo nie jest potrzebne.** W chwili kozła piłka dotyka płaszczyzny kortu, więc homografia przenosi punkt z obrazu wprost we współrzędne kortu. Jedna skalibrowana kamera wystarcza do orzeczenia, gdzie piłka odbiła. Stereo jest potrzebne dopiero do pełnej trajektorii 3D.
 
-**Kamera musi widzieć powierzchnię kortu, nie całą przestrzeń gry.** Wszystko, co decyduje o punkcie — kozioł, przekroczenie siatki — dzieje się na ziemi lub tuż nad nią. Apogeum loba nie decyduje o niczym, więc jego utrata z kadru jest akceptowana (patrz sekcja 13).
+**Kamera musi widzieć powierzchnię kortu, nie całą przestrzeń gry.** Wszystko, co decyduje o punkcie — kozioł, przekroczenie siatki — dzieje się na ziemi lub tuż nad nią. Apogeum loba nie decyduje o niczym, więc jego utrata z kadru jest akceptowana (patrz sekcja 14).
 
 ### Dekompozycja na podprojekty
 
@@ -86,6 +86,7 @@ Interfejsy portów projektowane są od początku pod **ograniczenia Camera2**, n
 | `link::LinkMessage`, `link::LinkCodec` | protokół i koperta |
 | `link::PeerLink` | numeracja, deduplikacja, stan łącza |
 | `session::SessionManifest` | model i walidacja sidecara |
+| `session::MatchSetup` | gracze, wiązanie ze stronami kortu, kolejność serwisu |
 | `session::MotionAnalyzer` | detekcja szarpnięć kamery |
 | `session::SessionRecorder` | maszyna stanów sesji |
 | `device::CapabilityReport` | zdolności urządzenia i poziom pracy |
@@ -105,6 +106,7 @@ Wszystkie te moduły są wolne od typów platformowych. Zależności sprzętowe 
 | `SystemProbes` | wolne miejsce, stan termiczny |
 | `CapabilityProbe` | odpytanie możliwości urządzenia |
 | `SessionStore` | katalogi sesji, zapis manifestu |
+| `PlayerRoster` | trwała lista znanych graczy |
 | `SessionCoordinator` | spina rdzeń z adapterami |
 | `WatchBridge` | WatchConnectivity, przekaz komend |
 | `RigUI` | podgląd, poziomica, stan, eksport, diagnostyka |
@@ -133,6 +135,14 @@ session-2026-09-14-1732/
   "role": "master",
   "platform": "ios",
   "peerDeviceModel": "iPhone15,4",
+  "match": {
+    "players": [
+      { "id": "p1", "name": "Piotr", "startEnd": "north" },
+      { "id": "p2", "name": "Marek", "startEnd": "south" }
+    ],
+    "firstServer": "p1",
+    "format": "singles-ad-tiebreak"
+  },
   "device": {
     "model": "iPhone17,2",
     "osVersion": "26.0",
@@ -190,7 +200,8 @@ session-2026-09-14-1732/
     { "hostTime": 123500.1, "type": "motion-spike", "magnitude": 0.42 },
     { "hostTime": 123610.0, "type": "capture-interrupted", "reason": "system-pressure" },
     { "hostTime": 123700.0, "type": "thermal", "state": "serious" },
-    { "hostTime": 123812.5, "type": "mark", "tag": "interesting" }
+    { "hostTime": 123812.5, "type": "mark", "tag": "interesting" },
+    { "hostTime": 124455.0, "type": "mark", "tag": "changeover" }
   ],
   "motionLog": "motion.jsonl"
 }
@@ -384,19 +395,70 @@ Apple Watch rozmawia wyłącznie ze **swoim** sparowanym iPhone'em — tak dzia�
 
 **Żyroskop nadgarstkowy jako detektor uderzeń** — zegarek na ręce z rakietą daje bardzo pewny sygnał „ten gracz właśnie uderzył", mocniejszy niż obraz przy zasłonięciu piłki ciałem. Rozwiązuje realny problem P2 z przypisaniem uderzenia. Wymaga zegarka na obu graczach, więc nie może być wymogiem; zapisane jako sygnał wspomagający w P2, obok audio.
 
-## 10. Przebieg sesji
+## 10. Tożsamość graczy i ustawienie meczu
+
+### Imię wiąże się ze stroną kortu, a strony się zmieniają
+
+Każda kamera pokrywa jedną połowę kortu. Zdanie „kamera A widzi Piotra" jest zatem prawdziwe **tylko do zmiany stron** — po nieparzystych gemach gracze się zamieniają i to samo urządzenie obserwuje już przeciwnika.
+
+Model nie może więc być parą imion. Musi być **wiązaniem gracz ↔ koniec kortu, zmiennym w czasie**. Bez tego punktacja w P2 zacznie przyznawać punkty odwrotnie po pierwszej zmianie stron.
+
+### Zawartość ustawienia meczu
+
+| Pole | Po co |
+|---|---|
+| Gracze | ogłoszenia głosowe, statystyki, komendy z zegarka |
+| Koniec kortu na starcie | wiązanie kamer z graczami |
+| **Kto serwuje pierwszy** | wymuszone przez zasady gry, patrz niżej |
+| Format | pełne sety, tiebreak przy 6:6, przewaga |
+
+### Kolejność serwisu nie jest opcjonalna
+
+W tenisie **ogłasza się najpierw wynik serwującego**. „Trzydzieści piętnaście" i „piętnaście trzydzieści" opisują ten sam stan gry z perspektywy różnych graczy. Bez wiedzy o tym, kto serwuje, poprawne ogłoszenie wyniku jest niemożliwe — niezależnie od tego, czy imiona zostały podane.
+
+Kolejność serwisu determinuje ponadto rotację przez cały mecz oraz to, do którego pola serwisowego leci piłka. Pole jest zatem obowiązkowe w modelu, nawet gdy gracze pozostają anonimowi.
+
+### Wprowadzanie: lista, nie klawiatura
+
+Gra się z tymi samymi kilkoma osobami, więc aplikacja utrzymuje **trwałą listę znanych graczy**; wybór dwóch to dwa stuknięcia. Imię wpisuje się raz.
+
+Ustawienie odbywa się **przed zawieszeniem telefonu**, bo potem nie da się go zdjąć. Wartości domyślne to „Gracz 1" i „Gracz 2" — **imiona nie mogą blokować startu nagrania**.
+
+### Zegarek zna swojego właściciela
+
+Skoro zegarek ma jednego właściciela, komendy w P2 stają się jednoznaczne bez znajomości stron: **„punkt dla mnie" i „punkt dla przeciwnika"**. Dwa przyciski, bez zastanawiania się, która kamera co obserwuje.
+
+### Zmiana stron
+
+W P2 system wie, kiedy kończy się gem, więc **przewraca wiązanie automatycznie** po nieparzystych gemach. Uzupełnia to komenda korekcyjna z zegarka („zamień strony") na wypadek rozjazdu.
+
+W P0a punktacji nie ma, więc zmiana stron jest po prostu kolejnym tagiem `MarkMoment`. Stuknięcie w zegarek przy zmianie zapisuje znacznik do manifestu, dzięki czemu P1 wie, od którego momentu połówki zamieniły graczy.
+
+### Model od razu pod debla
+
+`MatchSetup` przechowuje **listę graczy z przypisaniem do stron**, nie dwa pola. Debel w P4 dokłada wtedy graczy do listy, zamiast wymuszać przepisanie modelu i wszystkiego, co go używa. Ta sama dyscyplina obowiązuje w module punktacji.
+
+### Podział na podprojekty
+
+| P0a | `MatchSetup` w rdzeniu, lista graczy w UI, pole `match` w manifeście, tag `changeover` |
+| P2 | wynik wiązany z imionami, automatyczna zmiana stron, komendy „dla mnie / dla przeciwnika", ogłoszenia z imieniem |
+
+Dane pozostają lokalnie na urządzeniu — bez konta i bez chmury.
+
+## 11. Przebieg sesji
 
 1. Aplikacja uruchomiona na obu telefonach; obie strony ogłaszają się i szukają, łączą się automatycznie.
 2. Wybór roli — jawny przełącznik, domyślnie iPhone 16 Pro Max jako master.
-3. Zawieszenie telefonów i wycelowanie. Podgląd z **poziomicą z IMU** oraz wskazówką kadrowania: kort z marginesem ma wypełnić kadr, bez zapasu na niebo.
-4. Uzbrojenie: pomiar sceny, blokada parametrów kamery, raport możliwości.
-5. Seria synchronizacyjna. UI pokazuje jakość jedną liczbą (`±1,2 ms`) z sygnalizacją zielony / żółty / czerwony.
-6. Master rozpoczyna nagrywanie — z telefonu albo z zegarka; komenda idzie po łączu; oba urządzenia zapisują lokalnie.
-7. W trakcie widoczne na telefonie i na zegarku: czas, wolne miejsce, stan termiczny, jakość synchronizacji, stan łącza.
-8. Stop — oba urządzenia finalizują zapis i wymieniają końcowy log synchronizacji, tak aby **oba manifesty zawierały komplet**.
-9. Eksport na Maca.
+3. **Ustawienie meczu na masterze**: wybór dwóch graczy z listy, przypisanie do końców kortu, wskazanie serwującego. Pomijalne — wartości domyślne pozwalają nagrywać od razu.
+4. Zawieszenie telefonów i wycelowanie. Podgląd z **poziomicą z IMU** oraz wskazówką kadrowania: kort z marginesem ma wypełnić kadr, bez zapasu na niebo.
+5. Uzbrojenie: pomiar sceny, blokada parametrów kamery, raport możliwości.
+6. Seria synchronizacyjna. UI pokazuje jakość jedną liczbą (`±1,2 ms`) z sygnalizacją zielony / żółty / czerwony.
+7. Master rozpoczyna nagrywanie — z telefonu albo z zegarka; komenda idzie po łączu; oba urządzenia zapisują lokalnie.
+8. W trakcie widoczne na telefonie i na zegarku: czas, wolne miejsce, stan termiczny, jakość synchronizacji, stan łącza.
+9. Stop — oba urządzenia finalizują zapis i wymieniają końcowy log synchronizacji, tak aby **oba manifesty zawierały komplet**.
+10. Eksport na Maca.
 
-## 11. Obsługa awarii
+## 12. Obsługa awarii
 
 **Zasada nadrzędna: utrata łączności nigdy nie zatrzymuje nagrywania.** Każde urządzenie zapisuje lokalnie i samodzielnie. Łącze służy wyłącznie do komend i synchronizacji.
 
@@ -411,7 +473,7 @@ Apple Watch rozmawia wyłącznie ze **swoim** sparowanym iPhone'em — tak dzia�
 | Utrata łączności z zegarkiem | Nagrywanie trwa. Sterowanie wraca na telefon. |
 | Wygaśnięcie apki | Data wygaśnięcia provisioningu widoczna na ekranie głównym. |
 
-## 12. Testy
+## 13. Testy
 
 Praca prowadzona metodą TDD. Podział modułów jest podporządkowany testowalności: cała logika mieszka w rdzeniu Rust, poza warstwą sprzętową.
 
@@ -437,7 +499,7 @@ Praca prowadzona metodą TDD. Podział modułów jest podporządkowany testowaln
 
 Ten sam skrypt wczytuje sesję z obu telefonów i sprawdza spójność manifestów, wspólną oś czasu oraz ciągłość segmentów. Stanowi zalążek pipeline'u P1.
 
-## 13. Warunki nagrywania i zadanie pomiarowe kadru
+## 14. Warunki nagrywania i zadanie pomiarowe kadru
 
 Odłożone do pierwszego wyjścia na kort. Zapisane tutaj, żeby nie zniknęło.
 
@@ -447,7 +509,7 @@ Piłki mają leżeć tam, gdzie normalnie leżą — pod siatką, w narożnikach
 
 Uzasadnienie techniczne: nieruchoma piłka jest **z natury odfiltrowana**. Detektor typu TrackNet dostaje stos trzech kolejnych klatek właśnie dlatego, że ruch jest sygnałem; leżąca piłka daje identyczne piksele i słabą odpowiedź. Różnicowanie klatek widzi ją jako tło. Problemem są dopiero piłki **w ruchu**: toczące się, odbijane przed serwisem, przylatujące z sąsiedniego kortu — i te rozróżnia test paraboli (składowa pionowa i przyspieszenie bliskie −9,81 m/s²).
 
-Podczas nagrywania warto używać `MarkMoment`, gdy obca piłka wejdzie w kadr — powstaje gotowa lista trudnych przypadków do sprawdzenia w P1.
+Podczas nagrywania warto używać `MarkMoment`, gdy obca piłka wejdzie w kadr — powstaje gotowa lista trudnych przypadków do sprawdzenia w P1. Ten sam mechanizm z tagiem `changeover` odnotowuje zmiany stron, bez których wiązanie graczy z kamerami rozjeżdża się w połowie materiału.
 
 ### Kadrowanie
 
@@ -470,7 +532,7 @@ Kilka minut nagrania z celowymi lobami i głębokimi piłkami, a następnie pomi
 
 Odpowiada to empirycznie na pytanie o kadrowanie, pochylenie i wybór profilu, zamiast rozstrzygać je przy biurku.
 
-## 14. Kryteria ukończenia P0a
+## 15. Kryteria ukończenia P0a
 
 1. `cargo test` przechodzi w całości.
 2. `pytest` narzędzia weryfikującego przechodzi w całości.
@@ -480,20 +542,22 @@ Odpowiada to empirycznie na pytanie o kadrowanie, pochylenie i wybór profilu, z
 6. Wymuszone zerwanie łącza nie przerywa zapisu, luka odnotowana w `syncGaps`.
 7. Zegarek startuje i zatrzymuje nagrywanie oraz zapisuje `mark` do manifestu.
 8. Raport możliwości generuje się i trafia do manifestu.
-9. Test akceptacyjny z licznikiem milisekundowym zaliczony: różnica odczytu w każdej parze klatek nie przekracza jednego okresu klatki.
-10. Sesja eksportowalna na Maca i wczytywalna narzędziem weryfikującym.
-11. Zweryfikowana dostępność uprawnienia `HotspotConfiguration` na darmowym provisioningu (wynik odnotowany, niezależnie od tego, jaki jest).
+9. Ustawienie meczu (dwaj gracze z listy, końce kortu, serwujący) trafia do manifestu obu urządzeń; pominięcie go nie blokuje nagrywania.
+10. Test akceptacyjny z licznikiem milisekundowym zaliczony: różnica odczytu w każdej parze klatek nie przekracza jednego okresu klatki.
+11. Sesja eksportowalna na Maca i wczytywalna narzędziem weryfikującym.
+12. Zweryfikowana dostępność uprawnienia `HotspotConfiguration` na darmowym provisioningu (wynik odnotowany, niezależnie od tego, jaki jest).
 
-## 15. Co P0a przekazuje dalej
+## 16. Co P0a przekazuje dalej
 
-**Do P0b:** rdzeń Rust z kompletem testów, protokół łącza, model manifestu, zestaw komend pilota, interfejsy portów zaprojektowane pod ograniczenia Camera2.
+**Do P0b:** rdzeń Rust z kompletem testów, protokół łącza, model manifestu, `MatchSetup`, zestaw komend pilota, interfejsy portów zaprojektowane pod ograniczenia Camera2.
 
 **Do P1:**
 - Nagrania z dwóch ujęć ze wspólną osią czasu i znaną optyką
 - Macierz intrinsics obu kamer — kalibracja wewnętrzna gotowa
 - Dane do rozstrzygnięcia wyboru profilu i kadrowania
 - Log IMU pozwalający ocenić rzeczywistą skalę dryfu kamery
-- Znaczniki `mark` wskazujące trudne fragmenty
+- Znaczniki `mark` wskazujące trudne fragmenty oraz zmiany stron
+- Ustawienie meczu wiążące graczy z końcami kortu, czyli z konkretnymi kamerami
 - Skrypt weryfikujący sesję — pierwszy element pipeline'u P1
 
 Do czasu pierwszego wyjścia na kort P1 startuje z dwóch niezależnych źródeł danych: **publicznych zbiorów** do trackingu piłki tenisowej (ujęcie telewizyjne, przydatne jako pretraining) oraz **danych syntetycznych** — renderowana piłka z poprawnym rozmyciem ruchu, komponowana na statycznym zdjęciu docelowego kortu wzdłuż fizycznie poprawnych trajektorii, co daje nieograniczoną liczbę klatek z idealnymi etykietami. Etykietowanie rzeczywistych klatek prowadzone półautomatycznie: ręczne oznaczenie co dziesiątej klatki, interpolacja wzdłuż trajektorii, przegląd i korekta.
